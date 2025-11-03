@@ -11,13 +11,15 @@ import {
   LogoutOutlined
 } from "@ant-design/icons";
 import { Outlet, useLocation, Link, useNavigate } from "react-router-dom";
-import { CompanyName } from "../api/CompanyName"; // ✅ 추가
+import { CompanyName } from "../api/DefaultSetting"; // ✅ 추가
 
 const { Header, Sider, Content } = Layout;
 
 export default function AdminRoute() {
-  const loc = useLocation();
-    const navigate = useNavigate();
+    const { companyName, loading } = CompanyName();
+
+   const loc = useLocation();
+  const navigate = useNavigate();
   const selectedKey =
     loc.pathname.includes("/admin/orders") ? "orders" :
     loc.pathname.includes("/admin/items") ? "items" :
@@ -56,7 +58,8 @@ export default function AdminRoute() {
           }}
         >
            <span>
-            {`${CompanyName} 관리자`}
+            {console.log('CompanyName',companyName)}
+            {`${companyName} 관리자`}
           </span>
 
           <Popconfirm

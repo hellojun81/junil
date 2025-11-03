@@ -14,10 +14,10 @@ import styled from "styled-components";
 import { CheckCircleFilled } from "@ant-design/icons";
 import { useCart } from "../context/CartContext"; // 선택적: CartProvider가 없는 경우 폴백
 import {API_BASE_URL} from "../constants/config";
-
+import { useUnit } from "../api/DefaultSetting"; // ✅ 추가
 const { Text, Title } = Typography;
 
-
+  // const { getUnit,default_unit} = getUnit();
 const makeKey = (type, value, label) => `${type}::${value || label}`;
 
 /* ================================
@@ -51,7 +51,6 @@ const SelectContainer = styled.div`
  * ================================ */
 const CustomOption = (props) => {
   const { innerProps, label, data, selectProps } = props;
-
   const addedList = selectProps?.addedItemValues || [];
   // const addedKeys = selectProps?.addedKeys || new Set(); // Set<string>
 
@@ -125,17 +124,20 @@ const QuickOrder = ({
     // CartProvider 미설치 상태에서도 앱이 죽지 않도록 try/catch
     cartApi = useCart();
   } catch (_) {}
+  const { unit: unitList, default_unit } = useUnit();
+
  const [messageApi, contextHolder] = message.useMessage();
   const cart = cartApi?.cart || [];
   const addToCart = cartApi?.addItem;
-
   const [allItems, setAllItems] = useState([]);
   const [selectedItem, setSelectedItem] = useState(null);
   const [selectedSubItem, setSelectedSubItem] = useState(null);
   const [quantity, setQuantity] = useState(1);
-  const [unit, setUnit] = useState("박스");
+  const [unit, setUnit] =useState(default_unit);
   const [note, setNote] = useState("");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+
 const addedKeys = useMemo(() => {
     if (cart.length) {
       return new Set(
@@ -170,7 +172,12 @@ const orderCount = useMemo(() => {
     }
     return (addedItems || []).map((i) => i.value);
   }, [cart, addedItems]);
-
+useEffect(() => {
+  console.log(default_unit)
+  if (default_unit) {
+    setUnit(default_unit);
+  }
+}, [default_unit]);
   // 품목 데이터 로드 + initialOrder 초기화
   useEffect(() => {
     let mounted = true;
@@ -188,7 +195,7 @@ const orderCount = useMemo(() => {
           if (full) {
             setSelectedItem(full);
             setQuantity(initialOrder.quantity || 1);
-            setUnit(initialOrder.unit || "박스");
+            setUnit(initialOrder.unit || default_unit);
             setNote(initialOrder.note || "");
             if (full.subItems?.length) {
               setSelectedSubItem(initialOrder.subItem || full.subItems[0]);
@@ -203,7 +210,7 @@ const orderCount = useMemo(() => {
         setSelectedItem(null);
         setSelectedSubItem(null);
         setQuantity(1);
-        setUnit("박스");
+        setUnit(default_unit);
         setNote("");
         setIsMenuOpen(true);
       })
@@ -225,7 +232,7 @@ const orderCount = useMemo(() => {
       setSelectedItem(null);
       setSelectedSubItem(null);
       setQuantity(1);
-      setUnit("박스");
+      setUnit(default_unit);
       setNote("");
       setIsMenuOpen(true);
       return;
@@ -281,7 +288,7 @@ let itemAdded = false;
       setSelectedItem(null);
       setSelectedSubItem(null);
       setQuantity(1);
-      setUnit("박스");
+      setUnit(default_unit);
       setNote("");
       setIsMenuOpen(true);
 
@@ -301,7 +308,7 @@ let itemAdded = false;
   };
 
   // 단위 옵션
-  const unitOptions = ["키로", "팩(판)", "박스"].map((u) => (
+  const unitOptions = unitList.map((u) => (
     <AntSelect.Option key={u} value={u}>
       {u}
     </AntSelect.Option>

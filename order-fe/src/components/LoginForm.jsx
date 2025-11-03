@@ -2,12 +2,14 @@
 import React, { useState } from "react";
 import { Layout, Card, Typography, Button, Space, Divider } from "antd";
 import { App as AntdApp, ConfigProvider } from 'antd';
-
 import { LoginOutlined } from "@ant-design/icons";
 import PhoneNumberInput from "./PhoneNumberInput";
 import { loginByPhone } from "../services/auth"; // ← 경로 오타 수정!
 import { saveUser } from "../utils/storage";
 import '@ant-design/v5-patch-for-react-19';
+import { CompanyName } from "../api/DefaultSetting"; 
+
+
 const { Content } = Layout;
 const { Title, Text } = Typography;
 
@@ -15,6 +17,7 @@ const LoginForm = ({ onLoginSuccess }) => {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [loading, setLoading] = useState(false);
 const { notification, message, modal } = AntdApp.useApp();
+const { companyName } = CompanyName();
   const handleLogin = async () => {
     if (!phoneNumber) {
       // antd notification은 여기보다 상위(App)에서 ConfigProvider로 theme 적용되면 색상이 맞게 나옵니다.
@@ -86,7 +89,7 @@ const { notification, message, modal } = AntdApp.useApp();
               JUN
             </div>
             <Title level={3} style={{ margin: 0 }}>
-              전일축산 발주 시스템
+                   {`${companyName} 발주 시스템`}
             </Title>
             <Text type="secondary">등록된 전화번호로 간편 로그인</Text>
           </Space>
