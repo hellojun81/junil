@@ -77,58 +77,6 @@ export default function TodayCartSummary() {
         dataSource={todayItems}
         locale={{ emptyText: <Text type="secondary">오늘 담은 항목이 없습니다.</Text> }}
         renderItem={(it) => (
-//           <List.Item
-//   actions={[
-//     <Popconfirm
-//       key="remove"
-//       title="이 항목을 삭제할까요?"
-//       okText="삭제"
-//       cancelText="취소"
-//       onConfirm={() => handleRemove(it)}
-//     >
-//       <Button size="small" danger>
-//         삭제
-//       </Button>
-//     </Popconfirm>,
-//   ]}
-// >
-//   <Space
-//     wrap
-//     style={{
-//       width: "100%",
-//       justifyContent: "space-between",
-//       alignItems: "center",
-//     }}
-//   >
-//     {/* 왼쪽: 태그 + 이름 */}
-//     <Space>
-//       <Tag>{it.type}</Tag>
-//       <Text strong>
-//         {it.label}
-//         {it.subItem ? ` (${it.subItem})` : ""}
-//       </Text>
-//     </Space>
-
-//     {/* 오른쪽: 수량 + 단위 + 메모 */}
-//     <Space>
-//       <InputNumber
-//         min={0.1}
-//         step={0.1}
-//         value={it.quantity}
-//         onChange={(v) => handleChange(it.id, "quantity", v)}
-//         style={{ width: 80 }}
-//       />
-//       <Select
-//         value={it.unit}
-//         onChange={(v) => handleChange(it.id, "unit", v)}
-//         options={unitOptions}
-//         style={{ width: 90 }}
-//       />
-//       <Text type="secondary">{it.note || "-"}</Text>
-//     </Space>
-//   </Space>
-// </List.Item>
-
           <List.Item
             actions={[
               <Popconfirm
@@ -144,12 +92,14 @@ export default function TodayCartSummary() {
               </Popconfirm>,
             ]}
           >
+                 {/* {console.log('subItem',it.subItem)} */}
             <List.Item.Meta
               title={
                 <Space>
-                  <Tag>{it.type}</Tag>
+                  <Tag color={it.type === "돼지" ? "magenta" : "geekblue"}>{it.type} </Tag>
                   <Text strong>
                     {it.label}
+               
                     {it.subItem ? ` (${it.subItem})` : ""}
                   </Text>
                 </Space>

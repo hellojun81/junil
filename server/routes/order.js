@@ -50,6 +50,25 @@ async function findCustomerPhone(conn, customerId) {
 }
 
 /**
+ * 🧾 주문 상세 (필요 시 기존 /:id/details 와 동일하게 유지)
+ * GET /api/orders/:orderId/details
+ * 응답: { ok: true, details: [...] }
+ */
+router.get("/:orderId/details", async (req, res) => {
+  try {
+    const orderId = req.params.orderId;
+    const sql = `SELECT H.type, D.item_label AS label,IFNULL(D.sub_label,'') AS sub_label, D.unit, D.quantity,D.price,
+    D.amount, IFNULL(D.note,'')AS note FROM JUNIL_ORDER_DETAIL D  INNER JOIN JUNIL_ITEMS H ON D.item_id = H.item_id  WHERE D.order_id = ?  ORDER BY D.order_id, D.item_label
+`;
+    const rows = await SQL.executeQuery(sql, [orderId]);
+    res.json({ ok: true, details: rows });
+  } catch (err) {
+    console.error("details error:", err);
+    res.status(500).json({ ok: false, message: "주문 상세 조회 실패" });
+  }
+});
+
+/**
  * 요청 바디 예시:
  * {
  *   customerId: 1,
@@ -127,15 +146,6 @@ router.post("/", async (req, res) => {
       totalQty += qty;
       if (amount != null) totalAmount += amount;
     }
-
-    // 3) 헤더 합계 업데이트
-    // await conn.query(`UPDATE JUNIL_ORDER_HEADER SET total_qty=?, total_amount=?, updated_at=NOW() WHERE order_id=?`, [
-    //   totalQty,
-    //   totalAmount,
-    //   orderId,
-    // ]);
-
-    // await conn.commit();
     res.json({ ok: true, order_id: orderId, total_qty: totalQty, total_amount: totalAmount });
   } catch (e) {
     await conn.rollback();

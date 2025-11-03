@@ -61,7 +61,7 @@ router.get("/:orderId/details", async (req, res) => {
 router.get("/recentGroup", async (req, res) => {
   const customerId = req.query.customerId || req.query.userId || null;
   const limit = Math.min(Number(req.query.limit || 10), 100);
-
+  console.log("recentGroup");
   try {
     // 1) 최근 헤더 먼저
     const headerParams = [];
@@ -72,7 +72,7 @@ router.get("/recentGroup", async (req, res) => {
     }
 
     const headers = await SQL.executeQuery(
-      `SELECT  h.order_id   AS id, h.order_date AS order_date, h.status AS status FROM JUNIL_ORDER_HEADER h
+      `SELECT  h.order_id   AS id, h.order_date AS order_date FROM JUNIL_ORDER_HEADER h
       WHERE ${headerWhere}
       ORDER BY h.order_date DESC, h.order_id DESC
       LIMIT ?
@@ -107,7 +107,7 @@ router.get("/recentGroup", async (req, res) => {
       map.set(h.id, {
         id: h.id,
         date: formatMMDD(h.order_date),
-        status: h.status || "PENDING",
+        // status: h.status || "PENDING",
         items: [],
       });
     });

@@ -9,6 +9,8 @@ import ordersAdmin from "./routes/orders-admin.js";
 import itemsAdmin from "./routes/items-admin.js";
 import customersAdmin from "./routes/customers-admin.js";
 import SQL from "./sql.js";
+import ordersCustomerSummary from "./routes/orders-customer-summary.js";
+
 // 참고: 만약 sql.js가 여전히 CommonJS라면 require('./sql.js')를 사용해야 합니다.
 // 여기서는 일관성을 위해 sql.js도 ES 모듈로 가정합니다.
 
@@ -26,17 +28,17 @@ app.use(
 );
 app.use(express.json());
 app.use("/api/orders", orders);
-app.use("/api/orders", ordersExtra);
-app.use("/api/orders", ordersStats);
+app.use("/api/orders/extra", ordersExtra);
+app.use("/api/orders/stats", ordersStats);
 app.use("/api/orders", ordersAdmin); // 기존 orders, orders-extra, orders-stats와 함께 사용
 app.use("/api/admin/items", itemsAdmin);
 app.use("/api/admin/customers", customersAdmin);
+app.use("/api/orders/customer-summary", ordersCustomerSummary);
 app.use("/icons", express.static("icons"));
 app.get("/api/items", async (req, res) => {
   try {
     console.log("/api/items");
-    const query = `SELECT item_id, type, label, sub_label 
-,unit FROM JUNIL_ITEMS ORDER BY type, label`;
+    const query = `SELECT item_id, type, label, sub_label ,unit FROM JUNIL_ITEMS ORDER BY type, label`;
     const result = await SQL.executeQuery(query);
     const items = result.map((item) => {
       const rawSubItems = item.sub_label;

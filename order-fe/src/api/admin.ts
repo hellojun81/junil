@@ -115,3 +115,33 @@ export const updateOrderStatus = async (orderId: number | string, status: string
 
 // 주문 삭제
 export const deleteOrder = async (orderId: number | string) => fetch(`${API_BASE_URL}/api/orders/admin/${orderId}`, { method: "DELETE" }).then(j);
+
+export const getCustomerItemSummary = async (p: { customerId: number | string; dateFrom?: string; dateTo?: string; status?: string }) => {
+  const q = new URLSearchParams();
+  if (p.customerId) q.set("customerId", String(p.customerId));
+  if (p.dateFrom) q.set("dateFrom", p.dateFrom);
+  if (p.dateTo) q.set("dateTo", p.dateTo);
+  if (p.status) q.set("status", p.status);
+
+  return fetch(`${API_BASE_URL}/api/orders/customer-summary?${q.toString()}`, {
+    cache: "no-store",
+  }).then(async (r) => {
+    if (!r.ok) throw new Error(await r.text());
+    return r.json();
+  });
+};
+
+export const getAllCustomerItemSummary = async (p: { customerId: number | string; dateFrom?: string; dateTo?: string; status?: string }) => {
+  const q = new URLSearchParams();
+  if (p.customerId) q.set("customerId", String(p.customerId));
+  if (p.dateFrom) q.set("dateFrom", p.dateFrom);
+  if (p.dateTo) q.set("dateTo", p.dateTo);
+  if (p.status) q.set("status", p.status);
+  console.log(p);
+  return fetch(`${API_BASE_URL}/api/orders/customer-summary?${q.toString()}`, {
+    cache: "no-store",
+  }).then(async (r) => {
+    if (!r.ok) throw new Error(await r.text());
+    return r.json();
+  });
+};

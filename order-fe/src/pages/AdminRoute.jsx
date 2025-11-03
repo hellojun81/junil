@@ -1,6 +1,6 @@
 // src/pages/AdminRoute.jsx
 import React, { Suspense } from "react";
-import { Layout, Menu, Spin } from "antd";
+import { Layout, Menu, Spin, Button, Popconfirm } from "antd";
 import {
   DashboardOutlined,
   ShoppingCartOutlined,
@@ -8,6 +8,7 @@ import {
   TeamOutlined,
   BarChartOutlined,
   SettingOutlined,
+  LogoutOutlined
 } from "@ant-design/icons";
 import { Outlet, useLocation, Link, useNavigate } from "react-router-dom";
 
@@ -15,6 +16,7 @@ const { Header, Sider, Content } = Layout;
 
 export default function AdminRoute() {
   const loc = useLocation();
+    const navigate = useNavigate();
   const selectedKey =
     loc.pathname.includes("/admin/orders") ? "orders" :
     loc.pathname.includes("/admin/items") ? "items" :
@@ -30,15 +32,49 @@ export default function AdminRoute() {
     { key: "stats",     icon: <BarChartOutlined />,    label: <Link to="/admin/stats">통계</Link> },
     { key: "settings",  icon: <SettingOutlined />,     label: <Link to="/admin/settings">환경설정</Link> },
   ];
-
+  const handleLogout = () => {
+    localStorage.removeItem("junil_user");
+    navigate("/login");
+  };
   return (
     <Layout style={{ minHeight: "100vh" }}>
       <Sider breakpoint="lg" collapsedWidth={64}>
         <div style={{ color: "#fff", padding: 16, fontWeight: 700 }}>관리자</div>
         <Menu theme="dark" mode="inline" selectedKeys={[selectedKey]} items={items} />
       </Sider>
+      
       <Layout>
-        <Header style={{ background: "#fff", padding: "0 16px", fontWeight: 600 }}>전일축산 관리자</Header>
+       <Header
+          style={{
+            background: "#fff",
+            padding: "0 16px",
+            fontWeight: 600,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <span>전일축산 관리자</span>
+
+          <Popconfirm
+            title="로그아웃"
+            description="정말 로그아웃하시겠습니까?"
+            okText="로그아웃"
+            cancelText="취소"
+            onConfirm={handleLogout}
+          >
+            <Button
+              type="text"
+              icon={<LogoutOutlined />}
+              style={{ color: "#000", fontWeight: 500 }}
+            >
+              로그아웃
+            </Button>
+          </Popconfirm>
+        </Header>
+      
+      
+        
         <Content style={{ margin: 16 }}>
           <Suspense fallback={<Spin />}>
             <Outlet />

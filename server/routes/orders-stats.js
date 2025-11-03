@@ -3,13 +3,61 @@ import SQL from "../sql.js";
 
 const router = express.Router();
 
+router.get("/summary", async (req, res) => {
+  try {
+    console.log("/stats/summary");
+    const { customerId, status } = req.query;
+    const where = [];
+    const args = [];
+    if (customerId) {
+      where.push("customer_id = ?");
+      args.push(customerId);
+    }
+    if (status) {
+      where.push("status = ?");
+      args.push(status);
+    }
+    const whereSQL = where.length ? `WHERE ${where.join(" AND ")}` : "";
+
+    // 1) 최근 발주일 (MAX(order_date))
+    const lastRows = await SQL.executeQuery(
+      `SELECT DATE_FORMAT(MAX(order_date), '%Y-%m-%d') AS last_order_date FROM JUNIL_ORDER_HEADER  ${whereSQL}  `,
+      args
+    );
+    const lastOrderAt = lastRows?.[0]?.last_order_date || null;
+
+    // 2) 이번 달(1일~말일 전날) 발주건수
+    //   - [이번 달 1일] >=, [다음 달 1일] < 로 범위 지정
+    const monthWhereSQL =
+      (whereSQL ? whereSQL + " AND " : "WHERE ") +
+      `order_date >= DATE_FORMAT(CURDATE(), '%Y-%m-01') AND order_date <  DATE_FORMAT(DATE_ADD(CURDATE(), INTERVAL 1 MONTH), '%Y-%m-01')`;
+
+    const cntRows = await SQL.executeQuery(
+      ` SELECT COUNT(*) AS month_count FROM JUNIL_ORDER_HEADER
+      ${monthWhereSQL}
+      `,
+      args
+    );
+
+    const monthCount = cntRows?.[0]?.month_count;
+    console.log({ customerId: customerId, lastOrderAt: lastOrderAt, monthCount: monthCount });
+    res.json({
+      lastOrderAt,
+      monthCount: monthCount,
+    });
+  } catch (err) {
+    console.error("[/api/orders/summary] error:", err);
+    res.status(500).json({ error: "stats_failed", message: err.message });
+  }
+});
+
 /**
  * 통계 반환:
  * - summary: 총 주문수, 총 수량, 총 금액 (헤더 합계 기반)
  * - byDay: 최근 30일 일자별 주문수 / 수량 / 금액
  * - byCustomer: 고객별 주문수 / 수량 / 금액 TOP 10
  */
-router.get("/stats/overview", async (req, res) => {
+router.get("/overview", async (req, res) => {
   try {
     const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
     const monthStart = today.slice(0, 7); // YYYY-MM
@@ -48,7 +96,7 @@ router.get("/stats/overview", async (req, res) => {
  * 📈 2) 최근 N일간 주문추이 (Line Chart)
  * GET /api/orders/stats/trend?days=7
  */
-router.get("/stats/trend", async (req, res) => {
+router.get("/trend", async (req, res) => {
   try {
     const days = Number(req.query.days || 7);
     const [rows] = await SQL.db.query(

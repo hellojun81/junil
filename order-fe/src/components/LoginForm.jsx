@@ -1,18 +1,20 @@
 // LoginForm.jsx
 import React, { useState } from "react";
-import { Layout, Card, Typography, Button, Space, Divider,notification } from "antd";
+import { Layout, Card, Typography, Button, Space, Divider } from "antd";
+import { App as AntdApp, ConfigProvider } from 'antd';
+
 import { LoginOutlined } from "@ant-design/icons";
 import PhoneNumberInput from "./PhoneNumberInput";
 import { loginByPhone } from "../services/auth"; // ← 경로 오타 수정!
 import { saveUser } from "../utils/storage";
-
+import '@ant-design/v5-patch-for-react-19';
 const { Content } = Layout;
 const { Title, Text } = Typography;
 
 const LoginForm = ({ onLoginSuccess }) => {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [loading, setLoading] = useState(false);
-
+const { notification, message, modal } = AntdApp.useApp();
   const handleLogin = async () => {
     if (!phoneNumber) {
       // antd notification은 여기보다 상위(App)에서 ConfigProvider로 theme 적용되면 색상이 맞게 나옵니다.
@@ -42,6 +44,8 @@ const LoginForm = ({ onLoginSuccess }) => {
   };
 
   return (
+    <ConfigProvider>
+  <AntdApp>
     <Layout style={{ minHeight: "100vh", background: "linear-gradient(135deg, #f6f9fc 0%, #eef3f7 100%)" }}>
       <Content
         style={{
@@ -113,6 +117,8 @@ const LoginForm = ({ onLoginSuccess }) => {
         </Card>
       </Content>
     </Layout>
+      </AntdApp>
+</ConfigProvider>
   );
 };
 

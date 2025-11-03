@@ -4,6 +4,7 @@ import { LogoutOutlined, HomeOutlined, SettingOutlined, UserOutlined, AppstoreOu
 import styled from "styled-components";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { Outlet } from "react-router-dom";
 
 const { Content, Sider } = Layout;
 const { Text } = Typography;
@@ -63,6 +64,7 @@ const AppLayout = ({ children, hideLogout = false }) => {
             </div>
           )}
           {children}
+             <Outlet />
         </Content>
       </Layout>
     </Layout>
