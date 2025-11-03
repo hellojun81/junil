@@ -10,7 +10,9 @@ import itemsAdmin from "./routes/items-admin.js";
 import customersAdmin from "./routes/customers-admin.js";
 import SQL from "./sql.js";
 import ordersCustomerSummary from "./routes/orders-customer-summary.js";
+import settingsRouter from "./routes/settings.js";
 
+// import itemUnitRouter from "./routes/items-unit.js";
 // 참고: 만약 sql.js가 여전히 CommonJS라면 require('./sql.js')를 사용해야 합니다.
 // 여기서는 일관성을 위해 sql.js도 ES 모듈로 가정합니다.
 
@@ -35,6 +37,7 @@ app.use("/api/admin/items", itemsAdmin);
 app.use("/api/admin/customers", customersAdmin);
 app.use("/api/orders/customer-summary", ordersCustomerSummary);
 app.use("/icons", express.static("icons"));
+app.use("/api/settings", settingsRouter);
 app.get("/api/items", async (req, res) => {
   try {
     console.log("/api/items");

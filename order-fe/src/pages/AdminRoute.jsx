@@ -11,6 +11,7 @@ import {
   LogoutOutlined
 } from "@ant-design/icons";
 import { Outlet, useLocation, Link, useNavigate } from "react-router-dom";
+import { CompanyName } from "../api/CompanyName"; // ✅ 추가
 
 const { Header, Sider, Content } = Layout;
 
@@ -54,7 +55,9 @@ export default function AdminRoute() {
             justifyContent: "space-between",
           }}
         >
-          <span>전일축산 관리자</span>
+           <span>
+            {`${CompanyName} 관리자`}
+          </span>
 
           <Popconfirm
             title="로그아웃"

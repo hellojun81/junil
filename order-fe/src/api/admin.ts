@@ -5,6 +5,14 @@ const j = async (r: Response) => {
   return r.json();
 };
 
+const toJSON = async (r: Response) => {
+  if (!r.ok) {
+    const txt = await r.text().catch(() => "");
+    throw new Error(txt || `HTTP ${r.status}`);
+  }
+  return r.json();
+};
+
 // 개요 + 추이 (대시보드)
 export const getAdminOverview = async () => {
   // 백엔드 orders-stats.js 에서 today / month / trend 제공한다고 가정
@@ -145,3 +153,25 @@ export const getAllCustomerItemSummary = async (p: { customerId: number | string
     return r.json();
   });
 };
+
+export interface SettingsDTO {
+  company_name: string;
+  default_unit: string;
+  dashboard_rows: number;
+  units: string[]; // units_json 파싱 결과
+}
+
+export const getSettings = async (): Promise<SettingsDTO> =>
+  fetch(`${API_BASE_URL}/api/settings`, { cache: "no-store" }).then(toJSON);
+
+export const updateSettings = async (payload: {
+  company_name: string;
+  default_unit: string;
+  dashboard_rows: number;
+  units?: string[]; // 콤마 입력을 파싱 후 배열로
+}) =>
+  fetch(`${API_BASE_URL}/api/settings`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  }).then(toJSON);

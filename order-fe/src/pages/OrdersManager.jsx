@@ -347,7 +347,7 @@ const OrdersManager = () => {
                       header={
                         <Space split={<Divider type="vertical" />}>
                           <Text strong>{c.customer_name}</Text>
-                          <Text>대표발주서: <Text strong>{rep.firstLabel}{rep.extraCount>0 ? ` 외 ${rep.extraCount}건` : ""}</Text></Text>
+                          <Text>발주서: <Text strong>{rep.firstLabel}{rep.extraCount>0 ? ` 외 ${rep.extraCount}건` : ""}</Text></Text>
                           <Text>총 수량: <Text strong>{totals.qty.toLocaleString()}</Text></Text>
                           <Text>총 금액: <Text strong>{totals.amt.toLocaleString()}</Text></Text>
                           <Text>주문건수: <Text strong>{totals.orders.toLocaleString()}</Text></Text>
@@ -362,6 +362,7 @@ const OrdersManager = () => {
                         columns={[
                           { title: "품목", dataIndex: "label", width: 220 },
                           { title: "단위", dataIndex: "unit", width: 80 },
+                          { title: "부위", dataIndex: "sub_label", width: 140 },
                           { title: "총 수량", dataIndex: "total_qty", width: 120, align: "right",
                             render: (v)=> typeof v === "number" ? v.toLocaleString() : v ?? "-" },
                           { title: "총 금액", dataIndex: "total_amount", width: 140, align: "right",
@@ -449,6 +450,7 @@ const OrdersManager = () => {
                   ]
                 : [
                     { title: "품목", dataIndex: "label", width: 220 },
+                     { title: "부위", dataIndex: "sub_label", width: 140 },
                     { title: "단위", dataIndex: "unit", width: 80 },
                     { title: "총 수량", dataIndex: "total_qty", width: 120, align: "right",
                       render: (v)=> typeof v === "number" ? v.toLocaleString() : v ?? "-" },
