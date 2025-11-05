@@ -47,7 +47,7 @@ function App() {
     );
   }
 
-   if (!user) {
+  if (!user) {
     return (
       <ConfigProvider theme={{ token: { colorPrimary: "#3F8600" } }}>
         <AntdApp>
@@ -58,52 +58,52 @@ function App() {
   }
 
   const kind = String(user?.login_Kind ?? "").toUpperCase();
-  const isAdmin = kind === "ADMIN" || kind === "1";
+  const isAdmin = kind === "ADMIN" || kind === "1" || kind === "STAFF";
   const isCustomer = kind === "CUSTOMER" || kind === "0";
 
   console.log(user.login_Kind)
   return (
-     <ConfigProvider theme={{ token: { colorPrimary: "#3F8600" } }}>
+    <ConfigProvider theme={{ token: { colorPrimary: "#3F8600" } }}>
       <AntdApp>
         <AuthContext.Provider value={{ user, logout }}>
           <CartProvider user={user}>
             <BrowserRouter>
               <Suspense fallback={<Spin tip="로딩 중..." />}>
-              {console.log({ kind, isCustomer, isAdmin, path: window.location.pathname })}
+                {console.log({ kind, isCustomer, isAdmin, path: window.location.pathname })}
                 <Routes>
-  {/* 1) 관리자 전용: /admin/* 에 항상 라우트는 존재.
+                  {/* 1) 관리자 전용: /admin/* 에 항상 라우트는 존재.
         단, 고객이 접근하면 즉시 "/"로 리다이렉트 */}
-  <Route
-    path="/admin/*"
-    element={isAdmin ? <AdminRoute /> : <Navigate to="/" replace />}
-  >
-    {isAdmin && (
-      <>
-        <Route index element={<AdminDashboard />} />
-        <Route path="orders" element={<OrdersManager />} />
-        <Route path="items" element={<ItemsManager />} />
-        <Route path="customers" element={<CustomersManager />} />
-        <Route path="stats" element={<OrdersStats />} />
-        <Route path="settings" element={<AdminSettings />} />
-      </>
-    )}
-  </Route>
+                  <Route
+                    path="/admin/*"
+                    element={isAdmin ? <AdminRoute /> : <Navigate to="/" replace />}
+                  >
+                    {isAdmin && (
+                      <>
+                        <Route index element={<AdminDashboard />} />
+                        <Route path="orders" element={<OrdersManager />} />
+                        <Route path="items" element={<ItemsManager />} />
+                        <Route path="customers" element={<CustomersManager />} />
+                        <Route path="stats" element={<OrdersStats />} />
+                        <Route path="settings" element={<AdminSettings />} />
+                      </>
+                    )}
+                  </Route>
 
-  {/* 2) 고객 영역: "/*"를 고객 레이아웃으로 감싸고 기본은 "/" */}
-  <Route
-    path="/*"
-    element={isCustomer ? <AppLayout /> : <Navigate to="/admin" replace />}
-  >
-    {isCustomer && (
-      <>
-        <Route index element={<ClientDashboard user={user} />} />
-        <Route index element={<HomeRoute/>} />
-        {/* 고객용 추가 라우트가 있으면 여기에 */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </>
-    )}
-  </Route>
-</Routes>
+                  {/* 2) 고객 영역: "/*"를 고객 레이아웃으로 감싸고 기본은 "/" */}
+                  <Route
+                    path="/*"
+                    element={isCustomer ? <AppLayout /> : <Navigate to="/admin" replace />}
+                  >
+                    {isCustomer && (
+                      <>
+                        <Route index element={<ClientDashboard user={user} />} />
+                        <Route index element={<HomeRoute />} />
+                        {/* 고객용 추가 라우트가 있으면 여기에 */}
+                        <Route path="*" element={<Navigate to="/" replace />} />
+                      </>
+                    )}
+                  </Route>
+                </Routes>
               </Suspense>
             </BrowserRouter>
           </CartProvider>

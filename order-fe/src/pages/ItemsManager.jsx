@@ -4,7 +4,8 @@ import {
   Card, Space, Button, Modal, Form, Input, Select, Table, message, Popconfirm, App
 } from "antd";
 import { getItemsAdmin, createItem, updateItem, deleteItem } from "../api/admin";
-
+import "../styles/antd-custom.css";
+import { useUnit } from "../api/DefaultSetting"; // ✅ 추가
 const typeOptions = [
   { value: "소", label: "소" },
   { value: "돼지", label: "돼지" },
@@ -14,6 +15,7 @@ export default function ItemsManager() {
   const { message } = App.useApp()
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(false);
+  const { unit: unitList, default_unit } = useUnit();
 
   // 검색/필터
   const [q, setQ] = useState("");
@@ -36,6 +38,12 @@ export default function ItemsManager() {
       setLoading(false);
     }
   };
+  const unitOptions = useMemo(() => {
+    if (Array.isArray(unitList) && unitList.length) {
+      return unitList.map((u) => ({ value: u, label: u }));
+    }
+  }, [unitList]);
+
 
   useEffect(() => { fetchList(); }, []);          // 최초
   useEffect(() => { fetchList(); }, [q, ftype]);  // 검색/필터 변경
@@ -44,7 +52,7 @@ export default function ItemsManager() {
     const v = await form.validateFields();
     try {
       if (editing) await updateItem(editing.item_id, v);
-      else         await createItem(v);
+      else await createItem(v);
       message.success("저장되었습니다.");
       setOpen(false);
       setEditing(null);
@@ -56,11 +64,11 @@ export default function ItemsManager() {
   };
 
   const columns = useMemo(() => ([
-    { title: "ID", dataIndex: "item_id", width: 80 },
-    { title: "구분", dataIndex: "type", width: 100 },
-    { title: "품목", dataIndex: "label" },
-    { title: "단위", dataIndex: "unit", width: 90 },
-    { title: "부위(콤마)", dataIndex: "sub_label", ellipsis: true },
+    // { title: "ID", dataIndex: "item_id", width: 50, ellipsis: true },
+    { title: "구분", dataIndex: "type", width: 80 },
+    { title: "품목", dataIndex: "label", width: 120 },
+    { title: "단위", dataIndex: "unit", width: 80 },
+    { title: "부위(콤마)", dataIndex: "sub_label" },
     {
       title: "작업",
       key: "act",
@@ -115,7 +123,7 @@ export default function ItemsManager() {
               placeholder="품목/부위 검색"
               allowClear
               onSearch={setQ}
-              onChange={(e)=> setQ(e.target.value)}
+              onChange={(e) => setQ(e.target.value)}
               style={{ width: 220 }}
               value={q}
             />
@@ -142,18 +150,22 @@ export default function ItemsManager() {
         okText="저장"
         destroyOnClose
         afterOpenChange={(opened) => {
-   if (!opened) return;
-   if (editing) {
-     form.setFieldsValue({
-       type: editing.type,
-       label: editing.label,
-       unit: editing.unit,
-       sub_label: editing.sub_label || "",
-     });
-   } else {
-     form.resetFields();
-   }
- }}
+          if (!opened) return;
+          if (editing) {
+            form.setFieldsValue({
+              type: editing.type,
+              label: editing.label,
+              unit: editing.unit,
+              sub_label: editing.sub_label || "",
+            });
+          } else {
+            form.resetFields();
+            // 🔹 서버 기본 단위가 있으면 기본값으로 세팅
+            if (default_unit) {
+              form.setFieldsValue({ unit: default_unit });
+            }
+          }
+        }}
       >
         <Form form={form} layout="vertical" preserve={false}>
           <Form.Item name="type" label="구분" rules={[{ required: true, message: "구분을 선택하세요" }]}>
@@ -163,7 +175,7 @@ export default function ItemsManager() {
             <Input />
           </Form.Item>
           <Form.Item name="unit" label="단위" rules={[{ required: true, message: "단위를 선택하세요" }]}>
-            <Select options={[{ value: "KG" }, { value: "BOX" }, { value: "EA" }]} />
+            <Select options={unitOptions} />
           </Form.Item>
           <Form.Item
             name="sub_label"

@@ -11,6 +11,7 @@ import {
   getCustomerItemSummary,
   getAllCustomerItemSummary // 있으면 사용, 없으면 폴백
 } from "../api/admin";
+import "../styles/antd-custom.css";
 
 const { RangePicker } = DatePicker;
 const { Title, Text } = Typography;
@@ -18,8 +19,8 @@ const { Panel } = Collapse;
 
 const statusColor = (s) =>
   s === "PENDING" ? "orange" :
-  s === "DELIVERED" ? "green" :
-  s === "CANCELLED" ? "red" : "default";
+    s === "DELIVERED" ? "green" :
+      s === "CANCELLED" ? "red" : "default";
 
 const OrdersManager = () => {
   const [dates, setDates] = useState([dayjs(), dayjs()]);
@@ -73,7 +74,7 @@ const OrdersManager = () => {
   };
 
   useEffect(() => { load(); }, [params.page, params.pageSize]);
-  useEffect(() => { setPage((p)=>({ ...p, current: 1 })); }, [dates, status, customer]);
+  useEffect(() => { setPage((p) => ({ ...p, current: 1 })); }, [dates, status, customer]);
 
   // ── 유틸 ─────────────────────────────────────────────
   const calcRepInfo = (details = [], itemCountFallback) => {
@@ -134,7 +135,7 @@ const OrdersManager = () => {
   const loadAllDetails = useCallback(async () => {
     setAllDetail([]);
     setAllLoading(true);
-    
+
     try {
       if (typeof getAllCustomerItemSummary === "function") {
         const data = await getAllCustomerItemSummary({
@@ -143,7 +144,7 @@ const OrdersManager = () => {
           status: params.status,
           q: params.q
         });
-        console.log('data',data)
+        console.log('data', data)
         setAllDetail(Array.isArray(data) ? data : []);
       } else {
         // 폴백: 현재 페이지에 보이는 거래처만 병렬 수집
@@ -238,8 +239,8 @@ const OrdersManager = () => {
             children: (
               <Tag color={statusColor(sel.status)}>
                 {sel.status === "PENDING" ? "접수됨" :
-                 sel.status === "DELIVERED" ? "완료" :
-                 sel.status === "CANCELLED" ? "취소" : sel.status || "-"}
+                  sel.status === "DELIVERED" ? "완료" :
+                    sel.status === "CANCELLED" ? "취소" : sel.status || "-"}
               </Tag>
             )
           } : null,
@@ -275,57 +276,61 @@ const OrdersManager = () => {
 
       {/* 주문 목록 */}
       {viewMode !== "all" && (
-  <Card>
-    <Table
-      rowKey={(r)=>r.order_id}
-      dataSource={rows}
-      loading={loading}
-      onRow={(rec)=>({
-        onClick: async () => {
-          // ✅ summary/detail: 모달로 오픈
-          if (viewMode === "summary" || viewMode === "detail") {
-            await loadDetails(rec);
-          }
-        },
-        style: { cursor: (viewMode === "summary" || viewMode === "detail") ? "pointer" : "default" }
-      })}
-      pagination={{
-        current: page.current,
-        pageSize: page.pageSize,
-        total: page.total,
-        onChange: (current, pageSize) => setPage({ current, pageSize, total: page.total }),
-        showSizeChanger: true,
-        pageSizeOptions: [10,20,50,100],
-      }}
-      columns={[
-        { title: "주문일", dataIndex: "order_date", width: 120 },
-        { title: "고객", dataIndex: "customer_name" },
-        { title: "상태", dataIndex: "status", width: 120,
-          render: (v)=> <Tag color={statusColor(v)}>
-            {v === "PENDING" ? "접수됨" : v === "DELIVERED" ? "완료" : v === "CANCELLED" ? "취소" : v}
-          </Tag>
-        },
-        { title: "품목수", dataIndex: "item_count", width: 100 },
-        { title: "합계(원)", dataIndex: "total_amount", width: 140, align: "right",
-          render: (v)=> (v?.toLocaleString?.() ?? v ?? "-")
-        },
-        { title: "", key: "act", width: 160, render: (_, rec)=>(
-          <Space>
-            <Button size="small" onClick={async (e)=>{ 
-              e.stopPropagation();
-              if (viewMode === "summary" || viewMode === "detail") {
-                await loadDetails(rec);
+        <Card>
+          <Table
+            rowKey={(r) => r.order_id}
+            dataSource={rows}
+            loading={loading}
+            onRow={(rec) => ({
+              onClick: async () => {
+                // ✅ summary/detail: 모달로 오픈
+                if (viewMode === "summary" || viewMode === "detail") {
+                  await loadDetails(rec);
+                }
+              },
+              style: { cursor: (viewMode === "summary" || viewMode === "detail") ? "pointer" : "default" }
+            })}
+            pagination={{
+              current: page.current,
+              pageSize: page.pageSize,
+              total: page.total,
+              onChange: (current, pageSize) => setPage({ current, pageSize, total: page.total }),
+              showSizeChanger: true,
+              pageSizeOptions: [10, 20, 50, 100],
+            }}
+            columns={[
+              { title: "주문일", dataIndex: "order_date", width: 120 },
+              { title: "고객", dataIndex: "customer_name", width: 150 },
+              // {
+              //   title: "상태", dataIndex: "status", width: 120,
+              //   render: (v) => <Tag color={statusColor(v)}>
+              //     {v === "PENDING" ? "접수됨" : v === "DELIVERED" ? "완료" : v === "CANCELLED" ? "취소" : v}
+              //   </Tag>
+              // },
+              { title: "품목수", dataIndex: "item_count", width: 80 },
+              // {
+              //   title: "합계(원)", dataIndex: "total_amount", width: 140, align: "right",
+              //   render: (v) => (v?.toLocaleString?.() ?? v ?? "-")
+              // },
+              {
+                title: "", key: "act", width: 160, render: (_, rec) => (
+                  <Space>
+                    <Button size="small" onClick={async (e) => {
+                      e.stopPropagation();
+                      if (viewMode === "summary" || viewMode === "detail") {
+                        await loadDetails(rec);
+                      }
+                    }}>상세</Button>
+                    <Popconfirm title="삭제하시겠습니까?" onConfirm={async (e) => { e?.stopPropagation?.(); await onDelete(rec); }}>
+                      <Button size="small" danger onClick={(e) => e.stopPropagation()}>삭제</Button>
+                    </Popconfirm>
+                  </Space>
+                )
               }
-            }}>상세</Button>
-            <Popconfirm title="삭제하시겠습니까?" onConfirm={async (e)=>{ e?.stopPropagation?.(); await onDelete(rec); }}>
-              <Button size="small" danger onClick={(e)=>e.stopPropagation()}>삭제</Button>
-            </Popconfirm>
-          </Space>
-        )}
-      ]}
-    />
-  </Card>
-)}
+            ]}
+          />
+        </Card>
+      )}
 
       {/* ✅ 전체 상세(모든 거래처): 하단 인라인, 최초부터 전체 펼침 */}
       {viewMode === "all" && (
@@ -347,7 +352,7 @@ const OrdersManager = () => {
                       header={
                         <Space split={<Divider type="vertical" />}>
                           <Text strong>{c.customer_name}</Text>
-                          <Text>발주서: <Text strong>{rep.firstLabel}{rep.extraCount>0 ? ` 외 ${rep.extraCount}건` : ""}</Text></Text>
+                          <Text>발주서: <Text strong>{rep.firstLabel}{rep.extraCount > 0 ? ` 외 ${rep.extraCount}건` : ""}</Text></Text>
                           <Text>총 수량: <Text strong>{totals.qty.toLocaleString()}</Text></Text>
                           <Text>총 금액: <Text strong>{totals.amt.toLocaleString()}</Text></Text>
                           <Text>주문건수: <Text strong>{totals.orders.toLocaleString()}</Text></Text>
@@ -355,7 +360,7 @@ const OrdersManager = () => {
                       }
                     >
                       <Table
-                        rowKey={(r,i)=>i}
+                        rowKey={(r, i) => i}
                         dataSource={c.items || []}
                         size="small"
                         pagination={false}
@@ -363,21 +368,27 @@ const OrdersManager = () => {
                           { title: "품목", dataIndex: "label", width: 220 },
                           { title: "단위", dataIndex: "unit", width: 80 },
                           { title: "부위", dataIndex: "sub_label", width: 140 },
-                          { title: "총 수량", dataIndex: "total_qty", width: 120, align: "right",
-                            render: (v)=> typeof v === "number" ? v.toLocaleString() : v ?? "-" },
-                          { title: "총 금액", dataIndex: "total_amount", width: 140, align: "right",
-                            render: (v)=> typeof v === "number" ? v.toLocaleString() : v ?? "-" },
-                          { title: "주문건수", dataIndex: "orders", width: 120, align: "right",
-                            render: (v)=> typeof v === "number" ? v.toLocaleString() : v ?? "-" },
+                          {
+                            title: "총 수량", dataIndex: "total_qty", width: 120, align: "right",
+                            render: (v) => typeof v === "number" ? v.toLocaleString() : v ?? "-"
+                          },
+                          {
+                            title: "총 금액", dataIndex: "total_amount", width: 140, align: "right",
+                            render: (v) => typeof v === "number" ? v.toLocaleString() : v ?? "-"
+                          },
+                          {
+                            title: "주문건수", dataIndex: "orders", width: 120, align: "right",
+                            render: (v) => typeof v === "number" ? v.toLocaleString() : v ?? "-"
+                          },
                         ]}
-                        summary={(pageData)=>(
+                        summary={(pageData) => (
                           <Table.Summary fixed>
                             <Table.Summary.Row>
                               <Table.Summary.Cell index={0}><Text strong>합계</Text></Table.Summary.Cell>
                               <Table.Summary.Cell index={1} />
-                              <Table.Summary.Cell index={2}><Text strong>{sumBy(pageData,"total_qty").toLocaleString()}</Text></Table.Summary.Cell>
-                              <Table.Summary.Cell index={3}><Text strong>{sumBy(pageData,"total_amount").toLocaleString()}</Text></Table.Summary.Cell>
-                              <Table.Summary.Cell index={4}><Text strong>{sumBy(pageData,"orders").toLocaleString()}</Text></Table.Summary.Cell>
+                              <Table.Summary.Cell index={2}><Text strong>{sumBy(pageData, "total_qty").toLocaleString()}</Text></Table.Summary.Cell>
+                              <Table.Summary.Cell index={3}><Text strong>{sumBy(pageData, "total_amount").toLocaleString()}</Text></Table.Summary.Cell>
+                              <Table.Summary.Cell index={4}><Text strong>{sumBy(pageData, "orders").toLocaleString()}</Text></Table.Summary.Cell>
                             </Table.Summary.Row>
                           </Table.Summary>
                         )}
@@ -396,12 +407,12 @@ const OrdersManager = () => {
                   </Descriptions.Item>
                   <Descriptions.Item label="총 수량">
                     <Text strong>{
-                      allDetail.reduce((a,c)=> a + sumBy(c.items||[],"total_qty"), 0).toLocaleString()
+                      allDetail.reduce((a, c) => a + sumBy(c.items || [], "total_qty"), 0).toLocaleString()
                     }</Text>
                   </Descriptions.Item>
                   <Descriptions.Item label="총 금액">
                     <Text strong>{
-                      allDetail.reduce((a,c)=> a + sumBy(c.items||[],"total_amount"), 0).toLocaleString()
+                      allDetail.reduce((a, c) => a + sumBy(c.items || [], "total_amount"), 0).toLocaleString()
                     }</Text>
                   </Descriptions.Item>
                 </Descriptions>
@@ -431,7 +442,7 @@ const OrdersManager = () => {
         </Card>
 
         <Card style={{ marginTop: 12 }} size="small" loading={detailLoading}
-              title={viewMode === "summary" ? "주문 항목" : "거래처별 품목 합계"}>
+          title={viewMode === "summary" ? "주문 항목" : "거래처별 품목 합계"}>
           <Table
             rowKey={(r, i) => i}
             dataSource={detail}
@@ -440,25 +451,35 @@ const OrdersManager = () => {
             columns={
               viewMode === "summary"
                 ? [
-                    { title: "품목", dataIndex: "label", width: 200 },
-                    { title: "부위", dataIndex: "sub_label", width: 140 },
-                    { title: "수량", dataIndex: "quantity", width: 100, align: "right",
-                      render: (v)=> typeof v === "number" ? v.toLocaleString() : v ?? "-" },
-                    { title: "단위", dataIndex: "unit", width: 80 },
-                    { title: "금액", dataIndex: "amount", width: 120, align: "right",
-                      render: (v)=> typeof v === "number" ? v.toLocaleString() : v ?? "-" },
-                  ]
+                  { title: "품목", dataIndex: "label", width: 200 },
+                  { title: "부위", dataIndex: "sub_label", width: 140 },
+                  {
+                    title: "수량", dataIndex: "quantity", width: 100, align: "right",
+                    render: (v) => typeof v === "number" ? v.toLocaleString() : v ?? "-"
+                  },
+                  { title: "단위", dataIndex: "unit", width: 80 },
+                  {
+                    title: "금액", dataIndex: "amount", width: 120, align: "right",
+                    render: (v) => typeof v === "number" ? v.toLocaleString() : v ?? "-"
+                  },
+                ]
                 : [
-                    { title: "품목", dataIndex: "label", width: 220 },
-                     { title: "부위", dataIndex: "sub_label", width: 140 },
-                    { title: "단위", dataIndex: "unit", width: 80 },
-                    { title: "총 수량", dataIndex: "total_qty", width: 120, align: "right",
-                      render: (v)=> typeof v === "number" ? v.toLocaleString() : v ?? "-" },
-                    { title: "총 금액", dataIndex: "total_amount", width: 140, align: "right",
-                      render: (v)=> typeof v === "number" ? v.toLocaleString() : v ?? "-" },
-                    { title: "주문건수", dataIndex: "orders", width: 120, align: "right",
-                      render: (v)=> typeof v === "number" ? v.toLocaleString() : v ?? "-" },
-                  ]
+                  { title: "품목", dataIndex: "label", width: 220 },
+                  { title: "부위", dataIndex: "sub_label", width: 140 },
+                  { title: "단위", dataIndex: "unit", width: 80 },
+                  {
+                    title: "총 수량", dataIndex: "total_qty", width: 120, align: "right",
+                    render: (v) => typeof v === "number" ? v.toLocaleString() : v ?? "-"
+                  },
+                  {
+                    title: "총 금액", dataIndex: "total_amount", width: 140, align: "right",
+                    render: (v) => typeof v === "number" ? v.toLocaleString() : v ?? "-"
+                  },
+                  {
+                    title: "주문건수", dataIndex: "orders", width: 120, align: "right",
+                    render: (v) => typeof v === "number" ? v.toLocaleString() : v ?? "-"
+                  },
+                ]
             }
             summary={(pageData) => {
               if (viewMode === "summary") {

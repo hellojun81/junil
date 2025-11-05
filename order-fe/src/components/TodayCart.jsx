@@ -13,6 +13,7 @@ import {
   Select,
 } from "antd";
 import { useCart } from "../context/CartContext";
+import { useUnit } from "../api/DefaultSetting"; // ✅ 서버 단위 설정 훅
 
 const { Text, Title } = Typography;
 
@@ -27,7 +28,8 @@ function isToday(dateStr) {
 }
 
 export default function TodayCartSummary() {
-  const { cart, clear, removeItem, updateItem } = useCart(); // ✅ updateItem 추가
+  const { cart, clear, removeItem, updateItem } = useCart();
+  const { unit: unitList, default_unit } = useUnit(); // ✅ 서버에서 단위/기본단위
 
   const todayItems = useMemo(
     () => cart.filter((it) => !it.createdAt || isToday(it.createdAt)),
@@ -43,11 +45,18 @@ export default function TodayCartSummary() {
     updateItem(id, { [field]: value });
   };
 
-  const unitOptions = [
-    { label: "KG", value: "KG" },
-    { label: "BOX", value: "BOX" },
-    { label: "EA", value: "EA" },
-  ];
+  // ✅ 서버 단위 리스트 → <Select> options 로 변환
+  const unitOptions = useMemo(() => {
+    if (Array.isArray(unitList) && unitList.length) {
+      return unitList.map((u) => ({ label: u, value: u }));
+    }
+    // 서버에서 아무것도 안 내려왔을 때를 위한 안전장치
+    return [
+      { label: "KG", value: "KG" },
+      { label: "BOX", value: "BOX" },
+      { label: "EA", value: "EA" },
+    ];
+  }, [unitList]);
 
   return (
     <Card
@@ -75,7 +84,11 @@ export default function TodayCartSummary() {
       </Title>
       <List
         dataSource={todayItems}
-        locale={{ emptyText: <Text type="secondary">오늘 담은 항목이 없습니다.</Text> }}
+        locale={{
+          emptyText: (
+            <Text type="secondary">오늘 담은 항목이 없습니다.</Text>
+          ),
+        }}
         renderItem={(it) => (
           <List.Item
             actions={[
@@ -92,14 +105,16 @@ export default function TodayCartSummary() {
               </Popconfirm>,
             ]}
           >
-                 {/* {console.log('subItem',it.subItem)} */}
             <List.Item.Meta
               title={
                 <Space>
-                  <Tag color={it.type === "돼지" ? "magenta" : "geekblue"}>{it.type} </Tag>
+                  <Tag
+                    color={it.type === "돼지" ? "magenta" : "geekblue"}
+                  >
+                    {it.type}
+                  </Tag>
                   <Text strong>
                     {it.label}
-               
                     {it.subItem ? ` (${it.subItem})` : ""}
                   </Text>
                 </Space>
@@ -114,7 +129,7 @@ export default function TodayCartSummary() {
                     style={{ width: 80 }}
                   />
                   <Select
-                    value={it.unit}
+                    value={it.unit || default_unit} // ✅ 유닛 없으면 서버 기본 단위
                     onChange={(v) => handleChange(it.id, "unit", v)}
                     options={unitOptions}
                     style={{ width: 90 }}

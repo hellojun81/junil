@@ -13,11 +13,11 @@ import {
 import styled from "styled-components";
 import { CheckCircleFilled } from "@ant-design/icons";
 import { useCart } from "../context/CartContext"; // 선택적: CartProvider가 없는 경우 폴백
-import {API_BASE_URL} from "../constants/config";
+import { API_BASE_URL } from "../constants/config";
 import { useUnit } from "../api/DefaultSetting"; // ✅ 추가
 const { Text, Title } = Typography;
 
-  // const { getUnit,default_unit} = getUnit();
+// const { getUnit,default_unit} = getUnit();
 const makeKey = (type, value, label) => `${type}::${value || label}`;
 
 /* ================================
@@ -70,7 +70,7 @@ const CustomOption = (props) => {
     width: "100%",
     background: isCurrentlySelected ? "#f6ffed" : "white",
   };
- return (
+  return (
     <components.Option {...props}>
       <div
         {...innerProps}
@@ -81,11 +81,25 @@ const CustomOption = (props) => {
           padding: "12px 10px",
           fontSize: 16,
           width: "100%",
-          background: isCurrentlySelected ? "#f6ffed" : "white",
+          background: isCurrentlySelected ? "#e6e6e6ff" : "white",
+          cursor: "pointer",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", width: "100%" }}>
-          <span style={{ flexGrow: 1, fontWeight: 600 }}>{label}</span>
+          {/* ✅ 글씨 색상 조건 추가 */}
+          <span
+            style={{
+              flexGrow: 1,
+              fontWeight: 600,
+              color: isItemAdded
+                ? "#606060ff" // 이미 장바구니에 추가된 품목 → 초록색
+                : isCurrentlySelected
+                  ? "#000" // 현재 선택 중 → 검정
+                  : "#333", // 기본 텍스트
+            }}
+          >
+            {label}
+          </span>
           {isItemAdded && (
             <CheckCircleFilled style={{ color: "#3F8600", fontSize: 18, marginLeft: 10 }} />
           )}
@@ -120,25 +134,32 @@ const QuickOrder = ({
 }) => {
   // 선택적으로 CartContext 사용 (없으면 undefined)
   let cartApi = null;
+
   try {
     // CartProvider 미설치 상태에서도 앱이 죽지 않도록 try/catch
     cartApi = useCart();
-  } catch (_) {}
-  const { unit: unitList, default_unit } = useUnit();
-
- const [messageApi, contextHolder] = message.useMessage();
+  } catch (_) { }
   const cart = cartApi?.cart || [];
   const addToCart = cartApi?.addItem;
+  const updateCartItem = cartApi?.updateItem;
+
+  const { unit: unitList, default_unit } = useUnit();
+  console.log('default_unit', default_unit)
+  const [messageApi, contextHolder] = message.useMessage();
   const [allItems, setAllItems] = useState([]);
   const [selectedItem, setSelectedItem] = useState(null);
   const [selectedSubItem, setSelectedSubItem] = useState(null);
   const [quantity, setQuantity] = useState(1);
-  const [unit, setUnit] =useState(default_unit);
+  const [unit, setUnit] = useState("");
   const [note, setNote] = useState("");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  useEffect(() => {
+    if (default_unit && !unit) {
+      setUnit(default_unit);
+    }
+  }, [default_unit, unit]);
 
-
-const addedKeys = useMemo(() => {
+  const addedKeys = useMemo(() => {
     if (cart.length) {
       return new Set(
         cart
@@ -153,14 +174,14 @@ const addedKeys = useMemo(() => {
     );
   }, [cart, addedItems, meatType]);
 
-const orderCount = useMemo(() => {
-  // CartContext가 우선
-  if (cart.length) {
-    return cart.length; // 🎉 전체 카트 품목 개수
-  }
-  // 폴백: addedItems (props)
-  return (addedItems || []).length; // 🎉 전체 임시 목록 품목 개수
-}, [cart, addedItems]); 
+  const orderCount = useMemo(() => {
+    // CartContext가 우선
+    if (cart.length) {
+      return cart.length; // 🎉 전체 카트 품목 개수
+    }
+    // 폴백: addedItems (props)
+    return (addedItems || []).length; // 🎉 전체 임시 목록 품목 개수
+  }, [cart, addedItems]);
 
   // 이미 추가된 품목 value 목록 (CartContext 우선, 없으면 props.addedItems)
   const addedItemValues = useMemo(() => {
@@ -172,12 +193,8 @@ const orderCount = useMemo(() => {
     }
     return (addedItems || []).map((i) => i.value);
   }, [cart, addedItems]);
-useEffect(() => {
-  console.log(default_unit)
-  if (default_unit) {
-    setUnit(default_unit);
-  }
-}, [default_unit]);
+
+
   // 품목 데이터 로드 + initialOrder 초기화
   useEffect(() => {
     let mounted = true;
@@ -219,14 +236,12 @@ useEffect(() => {
       mounted = false;
     };
   }, [meatType, initialOrder]);
-
   // meatType 필터
   const filteredItems = useMemo(
     () => allItems.filter((i) => i.type === meatType),
     [allItems, meatType]
   );
 
-  // 품목 선택
   const handleItemSelect = (item) => {
     if (!item) {
       setSelectedItem(null);
@@ -245,9 +260,9 @@ useEffect(() => {
     }
     setIsMenuOpen(false);
   };
-
   // 장바구니/임시목록에 추가
   const handleAddItemToOrder = () => {
+    console.log("🛒 현재 cart 상태:", cart);
     if (!selectedItem) {
       notification.warning({ message: "발주할 품목을 선택해주세요." });
       return;
@@ -258,54 +273,61 @@ useEffect(() => {
       });
       return;
     }
-
+    const trimmedNote = note?.trim() || "";
     const newItem = {
-      type: meatType, // 보존
-      value: selectedItem.value,
+      type: meatType,
+      value: selectedItem.value,           // keyOf에서 쓸 수 있게
       label: selectedItem.label,
       subItem: selectedSubItem || null,
-      quantity: Number(quantity),
       unit,
-      note: note?.trim() || "",
-      // id는 CartContext에서 부여(디듀프) / 폴백(onAddItem) 경로에서는 임시 id 사용
+      note: trimmedNote,
+      quantity: Number(quantity || 0),
       id: Date.now(),
     };
-let itemAdded = false;
-
-    // 1) CartContext가 있으면 그쪽으로
+    let itemAdded = false;
+    // 1) CartContext 있는 경우: reducer가 자동으로 합산 처리
     if (addToCart) {
-      addToCart(newItem);
+      addToCart(newItem); // ADD 액션 → keyOf 기준으로 quantity 합산
       itemAdded = true;
+
+      messageApi.open({
+        type: "success",
+        content: `${selectedItem.label}${selectedSubItem ? ` (${selectedSubItem})` : ""
+          } ${quantity}${unit} 장바구니에 담았습니다.`,
+        duration: 1.2,
+      });
     }
-    // 2) 폴백: 부모 onAddItem prop 사용
+    // 2) CartContext 없고 onAddItem만 있는 폴백 경로
     else if (typeof onAddItem === "function") {
       onAddItem(newItem);
       itemAdded = true;
+      messageApi.open({
+        type: "success",
+        content: `${selectedItem.label}${selectedSubItem ? ` (${selectedSubItem})` : ""
+          } ${quantity}${unit} 추가 완료!`,
+        duration: 1.2,
+      });
     }
-
     if (itemAdded) {
-      // UX: 입력값 리셋/메뉴 다시 열기 (이것은 QuickOrder 내부 상태를 위한 것)
+      // 입력값 리셋 + 셀렉트 다시 열기
       setSelectedItem(null);
       setSelectedSubItem(null);
       setQuantity(1);
       setUnit(default_unit);
       setNote("");
       setIsMenuOpen(true);
-
-      messageApi.open({
-        type: "success",
-        content: `${selectedItem.label}${
-          selectedSubItem ? ` (${selectedSubItem})` : ""
-        } ${quantity}${unit} 추가 완료!`,
-        duration: 1.2, // ⏱ 자동 사라짐
-      });
-
-      // 🎉 핵심 수정: 항목이 추가되었으면 무조건 닫고 대시보드 화면으로 돌아갑니다.
+      // 필요하면 닫기 유지
       if (typeof onClose === "function") {
-        onClose(); 
+        onClose();
       }
     }
+
+    console.log("새로 추가될 아이템:", newItem); // newItem 내용 확인
   };
+
+
+
+
 
   // 단위 옵션
   const unitOptions = unitList.map((u) => (
@@ -360,7 +382,16 @@ let itemAdded = false;
                 ? base.boxShadow
                 : "0 0 0 1px #ff4d4f",
             }),
-            option: (base) => ({ ...base, padding: 0 }),
+            option: (base, state) => ({
+              ...base,
+              padding: 0,
+              backgroundColor: state.isSelected
+                ? "#f6ffed" // ✅ 선택 시 배경색
+                : state.isFocused
+                  ? "#e6f7ff" // ✅ hover 시 배경색
+                  : "white",
+              color: state.isSelected ? "black" : "black",
+            }),
             menu: (base) => ({ ...base, position: "relative", overflowY: "auto" }),
           }}
         />

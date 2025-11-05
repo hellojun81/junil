@@ -22,7 +22,7 @@ router.get("/", async (req, res) => {
     const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
 
     const sql = `
-      SELECT item_id, type, label, unit, sub_label
+      SELECT item_id, type, label, unit, IFNULL(sub_label,'')as sub_label
       FROM JUNIL_ITEMS
       ${whereSql}
       ORDER BY type, label, item_id

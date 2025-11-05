@@ -67,10 +67,10 @@ export default function AdminDashboard() {
   }, []);
 
   return (
-      <Space direction="vertical" size={16} style={{ width: "100%" }}>
+    <Space direction="vertical" size={16} style={{ width: "100%" }}>
       <Typography.Title level={3}>관리자 대시보드</Typography.Title>
 
-   
+
 
       {/* 요약 카드 */}
       <Row gutter={[16, 16]}>
@@ -125,22 +125,22 @@ export default function AdminDashboard() {
           pagination={false}
           columns={[
             { title: "주문일", dataIndex: "order_date", width: 120 },
-            { title: "고객", dataIndex: "customer_name" },
+            { title: "고객", dataIndex: "customer_name", width: 120 },
             {
               title: "상태",
               dataIndex: "status",
-              width: 120,
+              width: 80,
               render: (v) =>
                 v === "PENDING" ? "접수됨" : v === "DELIVERED" ? "완료" : v === "CANCELLED" ? "취소" : v || "-",
             },
-            { title: "품목수", dataIndex: "item_count", width: 90 },
-            {
-              title: "합계(원)",
-              dataIndex: "total_amount",
-              width: 140,
-              align: "right",
-              render: (v) => (v != null ? Number(v).toLocaleString() : "-"),
-            },
+            { title: "품목수", dataIndex: "item_count", width: 60 },
+            // {
+            //   title: "합계(원)",
+            //   dataIndex: "total_amount",
+            //   width: 140,
+            //   align: "right",
+            //   render: (v) => (v != null ? Number(v).toLocaleString() : "-"),
+            // },
           ]}
         />
       </Card>
