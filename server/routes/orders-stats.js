@@ -96,6 +96,88 @@ router.get("/overview", async (req, res) => {
  * 📈 2) 최근 N일간 주문추이 (Line Chart)
  * GET /api/orders/stats/trend?days=7
  */
+router.get("/group", async (req, res) => {
+  try {
+    const {
+      dateFrom,
+      dateTo,
+      groupBy = "label", // label | sub | unit
+      type = "전체",      // 소 / 돼지 / 전체
+      unit = "전체",      // KG / BOX / EA / 전체
+    } = req.query;
+
+    if (!dateFrom || !dateTo) {
+      return res.status(400).json({ ok: false, message: "dateFrom, dateTo 필요" });
+    }
+
+    // 어떤 컬럼으로 묶을지 결정
+    let fieldExpr; // 원본 컬럼
+    let alias;     // 응답에서 쓸 이름 (label / sub_label / unit)
+
+    if (groupBy === "sub") {
+      fieldExpr = "D.sub_label";
+      alias = "sub_label";
+    } else if (groupBy === "unit") {
+      fieldExpr = "D.unit";
+      alias = "unit";
+    } else {
+      // 기본: 품목명
+      fieldExpr = "D.item_label";
+      alias = "label";
+    }
+
+    // 🚫 공백/NULL 제거용 표현식 (TRIM + IFNULL)
+    const valueExpr = `TRIM(IFNULL(${fieldExpr}, ''))`;
+
+    const where = [];
+    const params = [];
+
+    // 날짜 필수
+    where.push("H.order_date >= ?");
+    params.push(dateFrom);
+    where.push("H.order_date <= ?");
+    params.push(dateTo);
+
+    // 소/돼지 필터
+    if (type && type !== "전체") {
+      where.push("D.type = ?");
+      params.push(type);
+    }
+
+    // UNIT 필터 (상단 셀렉트의 UNIT 필터)
+    if (unit && unit !== "전체") {
+      where.push("D.unit = ?");
+      params.push(unit);
+    }
+
+    // ✅ 그룹 기준 값이 NULL/빈 문자열인 것은 제외
+    where.push(`${valueExpr} <> ''`);
+
+    const whereSQL = where.length ? `WHERE ${where.join(" AND ")}` : "";
+
+    const sql = `SELECT ${valueExpr} AS ${alias}, COALESCE(SUM(D.quantity), 0) AS total_qty,
+        COUNT(DISTINCT H.order_id) AS order_count FROM JUNIL_ORDER_HEADER H
+      JOIN JUNIL_ORDER_DETAIL D ON H.order_id = D.order_id
+      ${whereSQL}
+      GROUP BY ${valueExpr}
+      ORDER BY total_qty DESC, ${valueExpr} ASC
+    `;
+
+    const rows = await SQL.executeQuery(sql, params);
+    console.log(rows)
+    res.json({
+      ok: true,
+      groupBy,
+      list: rows,
+    });
+  } catch (err) {
+    console.error("GET /api/orders/stats/group error:", err);
+    res.status(500).json({ ok: false, message: err.message });
+  }
+});
+
+
+
 router.get("/trend", async (req, res) => {
   try {
     const days = Number(req.query.days || 7);
@@ -158,5 +240,82 @@ router.get("/", async (_req, res) => {
     res.status(500).json({ ok: false, message: e.message });
   }
 });
+router.get("/items", async (req, res) => {
+  try {
+    const {
+      dateFrom,
+      dateTo,
+      type: meatType, // 소 / 돼지 / ALL
+      unit,           // KG / BOX / EA / ALL
+    } = req.query;
 
+    const where = [];
+    const args = [];
+
+    // 기간필터
+    if (dateFrom) {
+      where.push("H.order_date >= ?");
+      args.push(dateFrom);
+    }
+    if (dateTo) {
+      // dateTo 포함
+      where.push("H.order_date < DATE_ADD(?, INTERVAL 1 DAY)");
+      args.push(dateTo);
+    }
+
+    // ✅ type 은 JUNIL_ITEMS.type 기준으로 필터
+    if (meatType && meatType !== "ALL") {
+      where.push("I.type = ?");
+      args.push(meatType);
+    }
+
+    // UNIT 필터
+    if (unit && unit !== "ALL") {
+      // DETAIL.unit 우선, 없으면 ITEMS.unit
+      where.push("(D.unit = ? OR (D.unit IS NULL AND I.unit = ?))");
+      args.push(unit, unit);
+    }
+
+    // 완전 빈 레코드는 제외
+    where.push("(D.item_label IS NOT NULL OR I.label IS NOT NULL)");
+
+    const whereSQL = where.length ? `WHERE ${where.join(" AND ")}` : "";
+
+    const sql = `SELECT COALESCE(I.type, '기타') AS type,       -- 🔸 소/돼지 (items 기준)
+        COALESCE(D.item_label, I.label, '(미지정)') AS label,      -- 품목
+        COALESCE(D.sub_label, I.sub_label) AS sub_label,  -- 부위
+        COALESCE(D.unit, I.unit, 'KG') AS unit,       -- UNIT
+        COALESCE(SUM(D.quantity), 0) AS total_qty,
+        COUNT(DISTINCT H.order_id) AS order_count
+      FROM JUNIL_ORDER_HEADER H
+      JOIN JUNIL_ORDER_DETAIL D ON H.order_id = D.order_id
+      LEFT JOIN JUNIL_ITEMS I ON D.item_id = I.item_id   -- ✅ type 가져오는 핵심
+      ${whereSQL}
+      GROUP BY
+        COALESCE(I.type, '기타'),
+        COALESCE(D.item_label, I.label, '(미지정)'),
+        COALESCE(D.sub_label, I.sub_label),
+        COALESCE(D.unit, I.unit, 'KG')
+      ORDER BY
+        type ASC,
+        label ASC,
+        sub_label ASC,
+        unit ASC
+    `;
+
+    const rows = await SQL.executeQuery(sql, args);
+    console.log(sql)
+    res.json({
+      ok: true,
+      list: rows || [],
+    });
+  } catch (err) {
+    console.error("/api/orders/stats/items error:", err);
+    res.status(500).json({
+      ok: false,
+      error: "items_stats_failed",
+      message: err.message,
+    });
+  }
+});
 export default router;

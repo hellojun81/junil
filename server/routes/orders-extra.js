@@ -28,17 +28,25 @@ router.get("/:orderId/details", async (req, res) => {
     const { orderId } = req.params;
     console.log(orderId);
     const rows = await SQL.executeQuery(
-      ` SELECT  d.order_id AS id,
-        COALESCE(d.item_label, i.label) AS label,COALESCE(d.sub_label,  i.sub_label) AS sub_label,COALESCE(i.type, d.item_label) AS type,COALESCE(d.unit, i.unit) AS unit,d.quantity,d.price,d.amount,
+      ` SELECT  
+      d.detail_id,
+      d.order_id AS id,
+        COALESCE(d.item_label, i.label) AS label,COALESCE(d.sub_label,  i.sub_label) AS sub_label,
+        COALESCE(i.type, d.item_label) AS type,
+        COALESCE(d.unit, i.unit) AS unit,
+        d.quantity,
+        d.price,
+        d.amount,
+        d.status,
         d.note
       FROM JUNIL_ORDER_DETAIL d
       LEFT JOIN JUNIL_ITEMS i ON i.item_id = d.item_id
       WHERE d.order_id = ?
-      ORDER BY d.order_id ASC
+      ORDER BY d.detail_id ASC
       `,
       [orderId]
     );
-
+console.log("details sample row =", rows);
     const normalize = (r) => {
       const out = {};
       for (const k in r) {
@@ -88,7 +96,7 @@ router.get("/recentGroup", async (req, res) => {
     const detailsRaw = await SQL.executeQuery(
       ` SELECT  d.order_id AS id, d.order_id, i.type,COALESCE(d.item_label, i.label) AS label,
         COALESCE(d.sub_label,  i.sub_label) AS sub_label,  COALESCE(d.unit,i.unit) AS unit, COALESCE(i.type, d.item_label) AS type,d.quantity,
-        d.note
+        d.note ,d.status
       FROM JUNIL_ORDER_DETAIL d
       LEFT JOIN JUNIL_ITEMS i ON i.item_id = d.item_id
       WHERE d.order_id IN (${placeholders})
@@ -123,6 +131,7 @@ router.get("/recentGroup", async (req, res) => {
           unit: d.unit,
           quantity: Number(d.quantity),
           note: d.note || null,
+          status:d.status 
         });
       }
     });

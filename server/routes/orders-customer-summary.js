@@ -47,10 +47,7 @@ router.get("/", async (req, res) => {
   const amtExpr = "COALESCE(d.amount, d.price * d.quantity)";
 
   // SELECT / GROUP BY
-  const selectCols = `
-    c.customer_id,
-    MIN(c.name) AS customer_name,
-    ${labelExpr} AS item_label,
+  const selectCols = `c.customer_id, MIN(c.name) AS customer_name, ${labelExpr} AS item_label,
     IFNULL(d.sub_label, '')  AS sub_label,
     ${unitExpr}  AS unit
   `;
@@ -61,11 +58,10 @@ router.get("/", async (req, res) => {
     ${unitExpr}
   `;
 
-  const sql = `SELECT ${selectCols},CAST(SUM(d.quantity) AS DECIMAL(18,3)) AS total_qty,CAST(SUM(${amtExpr}) AS DECIMAL(18,0)) AS total_amount,
-      COUNT(DISTINCT d.order_id) AS orders FROM JUNIL_ORDER_DETAIL d JOIN JUNIL_ORDER_HEADER h  ON d.order_id = h.order_id
-    JOIN JUNIL_CUSTOMERS   c  ON h.customer_id = c.customer_id
-    ${where}
-    GROUP BY ${groupCols}
+  const sql = `SELECT i.type AS type, ${selectCols},CAST(SUM(d.quantity) AS DECIMAL(18,3)) AS total_qty,CAST(SUM(${amtExpr}) AS DECIMAL(18,0)) AS total_amount,
+      COUNT(DISTINCT d.order_id) AS orders,d.status FROM JUNIL_ORDER_DETAIL d JOIN JUNIL_ORDER_HEADER h  ON d.order_id = h.order_id
+    JOIN JUNIL_CUSTOMERS   c  ON h.customer_id = c.customer_id  LEFT JOIN JUNIL_ITEMS i ON d.item_id = i.item_id    ${where}
+    GROUP BY   i.type,   ${groupCols}
     ORDER BY c.customer_id, total_amount DESC, total_qty DESC
   `;
 
@@ -85,12 +81,14 @@ router.get("/", async (req, res) => {
           });
         }
         byCustomer.get(key).items.push({
+          type:r.type,
           label: r.item_label,
           sub_label: r.sub_label, // includeSub=false이면 null로 고정됨
           unit: r.unit,
           total_qty: r.total_qty,
           total_amount: r.total_amount,
           orders: r.orders,
+          status:r.status
         });
       }
       res.json(Array.from(byCustomer.values()));
@@ -106,6 +104,7 @@ router.get("/", async (req, res) => {
           total_qty: r.total_qty,
           total_amount: r.total_amount,
           orders: r.orders,
+          status:r.status
         }))
       );
     }

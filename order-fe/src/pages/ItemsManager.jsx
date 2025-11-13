@@ -67,8 +67,8 @@ export default function ItemsManager() {
     // { title: "ID", dataIndex: "item_id", width: 50, ellipsis: true },
     { title: "구분", dataIndex: "type", width: 80 },
     { title: "품목", dataIndex: "label", width: 120 },
+        { title: "부위(콤마)", dataIndex: "sub_label",width: 120 },
     { title: "단위", dataIndex: "unit", width: 80 },
-    { title: "부위(콤마)", dataIndex: "sub_label" },
     {
       title: "작업",
       key: "act",

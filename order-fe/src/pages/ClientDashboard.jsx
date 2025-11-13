@@ -1,15 +1,86 @@
 // ClientDashboard.jsx
 import React, { useEffect, useState, useCallback } from "react";
 import {
-  Card, Typography, Button, List, Space, Row, Col, Tag, notification, Divider, Modal, Table, message,
+  Card,
+  Typography,
+  Button,
+  List,
+  Space,
+  Row,
+  Col,
+  Tag,
+  notification,
+  Divider,
+  Modal,
+  Table,
+  message,
 } from "antd";
-import { ShoppingCartOutlined, FireOutlined, SmileOutlined, SendOutlined } from "@ant-design/icons";
+import {
+  FireOutlined,
+  SmileOutlined,
+  SendOutlined,
+} from "@ant-design/icons";
 import { API_BASE_URL } from "../constants/config";
 import QuickOrder from "../components/QuickOrder";
 import TodayCartSummary from "../components/TodayCart";
 import { useCart } from "../context/CartContext"; // ✅ 추가
 
 const { Title, Text } = Typography;
+
+/* ======================
+ * 상태 관련 헬퍼 공통
+ * ====================== */
+
+// 색상
+const statusColor = (s) => {
+  const v = (s || "").toUpperCase();
+  if (v === "NEW" || v === "PENDING") return "orange"; // 접수
+  if (v === "DELIVERED") return "green"; // 배송완료
+  if (v === "CANCELLED") return "red"; // 취소
+  if (v === "PARTIAL") return "blue"; // 부분배송
+  return "default";
+};
+
+// 라벨
+const statusLabel = (s) => {
+  const v = (s || "").toUpperCase();
+  if (v === "NEW" || v === "PENDING") return "접수";
+  if (v === "DELIVERED") return "배송완료";
+  if (v === "CANCELLED") return "취소";
+  if (v === "PARTIAL") return "부분배송";
+  return s || "-";
+};
+
+// 여러 status 배열로부터 집계 (DELIVERED/PENDING/CANCELLED/PARTIAL)
+const getAggregatedStatusFromArray = (statuses = []) => {
+  const list = statuses
+    .map((s) => (s ? String(s).toUpperCase() : "PENDING"))
+    .filter(Boolean);
+
+  if (!list.length) return null;
+
+  const set = new Set(list);
+
+  // 모두 동일
+  if (set.size === 1) {
+    const only = [...set][0];
+    if (only === "DELIVERED") return "DELIVERED";
+    if (only === "CANCELLED") return "CANCELLED";
+    return "PENDING"; // NEW/PENDING 등은 접수로
+  }
+
+  // 섞여 있을 때 DELIVERED가 하나라도 있으면 부분배송
+  if (set.has("DELIVERED")) return "PARTIAL";
+
+  // DELIVERED 없이 PENDING/CANCELLED 섞여 있으면 접수 취급
+  return "PENDING";
+};
+
+// JSX 태그 렌더
+const renderStatusTag = (s) => {
+  if (!s) return null;
+  return <Tag color={statusColor(s)}>{statusLabel(s)}</Tag>;
+};
 
 const ClientDashboard = ({ user }) => {
   const [recent, setRecent] = useState([]);
@@ -21,14 +92,18 @@ const ClientDashboard = ({ user }) => {
   const [sending, setSending] = useState(false);
   const [orderDetails, setOrderDetails] = useState([]);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0); // ✅ 강제 새로고침 키
+  const [selectedStatus, setSelectedStatus] = useState(null); // ✅ 상세 모달 표시용 상태
+
+  const { addOrMergeItems } = useCart();
 
   const openOrder = (type) => setSelectedType(type);
   const closeOrder = () => setSelectedType(null);
-  const { addOrMergeItems } = useCart();
-  // console.log('ClientDashboard')
+
   const handlePutOrderToCart = async (order) => {
-    const res = await fetch(`${API_BASE_URL}/api/orders/${order.id}/details`, { cache: "no-store" });
+    const res = await fetch(
+      `${API_BASE_URL}/api/orders/${order.id}/details`,
+      { cache: "no-store" }
+    );
     let details = [];
     if (res.ok) {
       const json = await res.json();
@@ -36,7 +111,7 @@ const ClientDashboard = ({ user }) => {
     }
     if (!details.length) details = order.items || [];
 
-    const toAdd = details.map(d => ({
+    const toAdd = details.map((d) => ({
       type: d.type,
       label: d.label,
       subItem: d.subItem ?? d.sub_label ?? null,
@@ -47,6 +122,7 @@ const ClientDashboard = ({ user }) => {
 
     addOrMergeItems(toAdd);
   };
+
   const fetchDashboard = useCallback(async () => {
     try {
       const bust = `_=${Date.now()}`; // ✅ 캐시 버스터
@@ -62,11 +138,21 @@ const ClientDashboard = ({ user }) => {
 
       const recJson = r1.ok ? await r1.json() : { orders: [] };
       const stJson = r2.ok ? await r2.json() : {};
-      // const stJson  = r2.ok ? await r2.json() : {};
       const rec = Array.isArray(recJson?.orders) ? recJson.orders : [];
-      // console.log(stJson)
-      // ✅ 새 참조 보장
-      setRecent([...rec]);
+
+      // ✅ 각 주문의 items 안에 status가 있으면 그것으로 집계
+      const withStatus = rec.map((o) => {
+        const itemStatuses = (o.items || [])
+          .map((it) => it.status)
+          .filter(Boolean);
+        const agg = getAggregatedStatusFromArray(itemStatuses);
+        return {
+          ...o,
+          aggregatedStatus: agg || o.status || null,
+        };
+      });
+
+      setRecent(withStatus);
       setStats({
         monthCount: stJson.monthCount ?? 0,
         lastOrderAt: stJson.lastOrderAt ?? "-",
@@ -84,7 +170,9 @@ const ClientDashboard = ({ user }) => {
   const fetchOrderDetails = async (orderId) => {
     try {
       setDetailLoading(true);
-      const res = await fetch(`${API_BASE_URL}/api/orders/${orderId}/details`);
+      const res = await fetch(
+        `${API_BASE_URL}/api/orders/${orderId}/details`
+      );
       const json = await res.json();
 
       if (json.ok) {
@@ -94,6 +182,12 @@ const ClientDashboard = ({ user }) => {
           note: d.note === "null" ? "" : d.note ?? "", // ← 문자열 "null" 제거
         }));
         setOrderDetails(normalized);
+
+        // ✅ 디테일 status 기준으로 상태 집계 (부분배송 계산)
+        const agg = getAggregatedStatusFromArray(
+          normalized.map((d) => d.status).filter(Boolean)
+        );
+        setSelectedStatus(agg || null);
       } else {
         message.error("주문 상세를 불러오지 못했습니다.");
       }
@@ -126,21 +220,20 @@ const ClientDashboard = ({ user }) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error((await res.text().catch(() => "")) || `HTTP ${res.status}`);
+      if (!res.ok)
+        throw new Error(
+          (await res.text().catch(() => "")) || `HTTP ${res.status}`
+        );
 
       message.success("주문서가 전송되었습니다.");
 
-      // ✅ 전송 직후 처리 순서
-      try { localStorage.removeItem("temp_cart"); } catch { }
+      try {
+        localStorage.removeItem("temp_cart");
+      } catch {}
       clear();
       setSendOpen(false);
 
-      // ✅ 즉시 최신화
       await fetchDashboard();
-
-      // ✅ 그래도 같은 내용이라 렌더가 생략될 수 있으니 강제 리프레시 키 증가
-      setRefreshKey((k) => k + 1);
-
     } catch (err) {
       console.error(err);
       message.error("전송에 실패했습니다. 잠시 후 다시 시도해주세요.");
@@ -149,12 +242,6 @@ const ClientDashboard = ({ user }) => {
     }
   };
 
-
-  const tag = (s) =>
-    s === "NEW" ? (
-      <Tag color="blue">신규</Tag> // "NEW" 상태에 대한 명시적인 태그를 추가하는 것이 사용자에게 좋습니다.
-    ) : null;
-
   // ✅ 퀵오더 화면
   if (selectedType) {
     return (
@@ -162,23 +249,33 @@ const ClientDashboard = ({ user }) => {
         meatType={selectedType}
         onClose={closeOrder}
         onAddItem={(item) => {
-          notification.success({ message: `발주 항목이 임시 목록에 추가되었습니다: ${item.label}` });
+          notification.success({
+            message: `발주 항목이 임시 목록에 추가되었습니다: ${item.label}`,
+          });
         }}
       />
     );
   }
+
   const summarizeOrder = (o) => {
     const first = o.items?.[0];
     if (!first) return `${o.date} 발주내역`;
     const extraCount = (o.items?.length || 1) - 1;
-    const main = `${o.date} ${o.status || ""}${first.label} · ${first.quantity}${first.unit}`;
+    const main = `${o.date} ${first.label} · ${first.quantity}${first.unit}`;
     return extraCount > 0 ? `${main} 외 ${extraCount}건` : main;
   };
+
   // ✅ 전송 검토 모달 테이블 컬럼
   const columns = [
     { title: "구분", dataIndex: "type", key: "type", width: 60 },
-    { title: "품목", dataIndex: "label", key: "label", width: 120, },
-    { title: "세부", dataIndex: "subItem", key: "subItem", width: 100, render: v => v || "-" },
+    { title: "품목", dataIndex: "label", key: "label", width: 120 },
+    {
+      title: "부위",
+      dataIndex: "subItem",
+      key: "subItem",
+      width: 100,
+      render: (v) => v || "-",
+    },
     { title: "수량", dataIndex: "quantity", key: "quantity", width: 90 },
     { title: "단위", dataIndex: "unit", key: "unit", width: 90 },
     { title: "메모", dataIndex: "note", key: "note", ellipsis: true },
@@ -187,16 +284,41 @@ const ClientDashboard = ({ user }) => {
   return (
     <div style={{ padding: 16, maxWidth: 520, margin: "0 auto" }}>
       <Card bordered={false}>
-        <Space direction="vertical" style={{ width: "100%", textAlign: "center" }}>
+        <Space
+          direction="vertical"
+          style={{ width: "100%", textAlign: "center" }}
+        >
           <Title level={3}>안녕하세요, {user?.name}님 👋</Title>
           <Text type="secondary">전일축산 발주 대시보드</Text>
         </Space>
       </Card>
 
       <Divider>발주하기</Divider>
-      <Space align="center" size="large" style={{ display: "flex", justifyContent: "center", margin: "20px 0" }}>
-        <Button type="primary" size="large" icon={<FireOutlined />} onClick={() => openOrder("소")}>🐮 소 발주</Button>
-        <Button type="primary" size="large" icon={<SmileOutlined />} onClick={() => openOrder("돼지")}>🐷 돼지 발주</Button>
+      <Space
+        align="center"
+        size="large"
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          margin: "20px 0",
+        }}
+      >
+        <Button
+          type="primary"
+          size="large"
+          icon={<FireOutlined />}
+          onClick={() => openOrder("소")}
+        >
+          🐮 소 발주
+        </Button>
+        <Button
+          type="primary"
+          size="large"
+          icon={<SmileOutlined />}
+          onClick={() => openOrder("돼지")}
+        >
+          🐷 돼지 발주
+        </Button>
       </Space>
 
       {/* 오늘 장바구니 + 전송 버튼 */}
@@ -249,7 +371,9 @@ const ClientDashboard = ({ user }) => {
         <Col xs={24} md={12} style={{ maxHeight: 140 }}>
           <Card bordered hoverable style={{ height: "100%" }}>
             <Title level={4}>이달 발주</Title>
-            <Text style={{ fontSize: 20, fontWeight: "bold" }}>{stats.monthCount}건</Text>
+            <Text style={{ fontSize: 20, fontWeight: "bold" }}>
+              {stats.monthCount}건
+            </Text>
           </Card>
         </Col>
         <Col xs={24} md={12}>
@@ -260,75 +384,157 @@ const ClientDashboard = ({ user }) => {
         </Col>
       </Row>
 
-      <Card style={{ marginTop: 80 }} title="최근 발주" >
-        <List
-          dataSource={recent}
-          locale={{ emptyText: <Text type="secondary">최근 발주 내역이 없습니다.</Text> }}
-          renderItem={(order) => (
-            <List.Item
-              onClick={() => {
-                setSelectedOrder(order);
-                fetchOrderDetails(order.id);
+      {/* ✅ 최근 발주 리스트 + 상태 태그 (부분배송 포함) */}
+      <Card style={{ marginTop: 80 }} title="최근 발주">
+  <List
+    dataSource={recent}
+    locale={{
+      emptyText: (
+        <Text type="secondary">최근 발주 내역이 없습니다.</Text>
+      ),
+    }}
+    renderItem={(order) => {
+      // ▣ 1) 상품별 status 배열
+      const itemStatuses = (order.items || [])
+        .map((it) => it.status)
+        .filter(Boolean); // null 제외
+      console.log('itemStatuses',itemStatuses)
+      // ▣ 2) 부분배송 계산
+      const aggregated =
+        order.aggregatedStatus ||
+        getAggregatedStatusFromArray(itemStatuses) ||
+        order.status ||
+        null;
+      console.log('aggregated',aggregated)
+      return (
+        <List.Item
+          onClick={() => {
+            setSelectedOrder(order);
+            setSelectedStatus(aggregated || null);
+            fetchOrderDetails(order.id);
+          }}
+          style={{
+            cursor: "pointer",
+            padding: "12px 4px",
+            transition: "background 0.2s",
+          }}
+          actions={[
+            <Button
+              key="reorder"
+              size="small"
+              onClick={async (e) => {
+                e.stopPropagation();
+                await handlePutOrderToCart(order);
               }}
-              style={{
-                cursor: "pointer",
-                transition: "background 0.2s",
-              }}
-              actions={[
-                <Button
-                  key="reorder"
-                  size="small"
-                  onClick={async (e) => {
-                    e.stopPropagation(); // 리스트 클릭 이벤트 막기
-                    await handlePutOrderToCart(order);
-                  }}
-                >
-                  장바구니
-                </Button>,
-              ]}
             >
-              <List.Item.Meta
-                title={
-                  <Space>
-                    <Tag color={order.items?.[0]?.type === "돼지" ? "magenta" : "geekblue"}>{order.items?.[0]?.type} </Tag>
-                    <Text strong>{summarizeOrder(order)}</Text>
-                  </Space>
-                }
-                description={<Text type="secondary">{tag(order.status)}</Text>}
-              />
-            </List.Item>
-          )}
-        />
-      </Card>
+              장바구니
+            </Button>,
+          ]}
+        >
+              {/* ▣ 3) 제목 우측에도 작게 상태 표시 */}
+                {aggregated && (
+                  <span style={{ marginLeft: 8 }}>
+                    {renderStatusTag(aggregated)}
+                  </span>
+                )}
+          <List.Item.Meta
+            title={
+              <Space direction="horizontal">
+                <Tag
+                  color={
+                    order.items?.[0]?.type === "돼지"
+                      ? "magenta"
+                      : "geekblue"
+                  }
+                >
+                  {order.items?.[0]?.type}
+                </Tag>
 
-      {/* ✅ 주문 상세 모달 */}
+                <Text strong>{summarizeOrder(order)}</Text>
+
+            
+              </Space>
+            }
+            // description={
+            //   aggregated ? (
+            //     <span>
+            //       주문 상태: {renderStatusTag(aggregated)}
+            //     </span>
+            //   ) : (
+            //     <Text type="secondary">상태 없음</Text>
+            //   )
+            // }
+          />
+        </List.Item>
+      );
+    }}
+  />
+</Card>
+
+      {/* ✅ 주문 상세 모달 (상단 + 품목별 상태) */}
       <Modal
         title={`발주 상세 (${selectedOrder?.date || ""})`}
         open={!!selectedOrder}
         onCancel={() => {
           setSelectedOrder(null);
           setOrderDetails([]);
+          setSelectedStatus(null);
         }}
         footer={null}
         width={600}
         key={selectedOrder?.id}
       >
-        {/* {console.log('selectedOrder',selectedOrder)} */}
         {selectedOrder && (
           <>
             <Text strong>
-              주문상태: {tag(selectedOrder.status)} / 주문번호: {selectedOrder.id}
+              주문상태:{" "}
+              {renderStatusTag(
+                selectedStatus || selectedOrder.aggregatedStatus || selectedOrder.status
+              )}{" "}
+              / 주문번호: {selectedOrder.id}
             </Text>
             <Divider />
             <Table
-              rowKey={(r) => r.id}
+              rowKey={(r, i) => r.detail_id ?? i}
               columns={[
                 { title: "구분", dataIndex: "type", key: "type", width: 60 },
-                { title: "품목", dataIndex: "label", key: "label", width: 120, },
-                { title: "세부", dataIndex: "sub_label", key: "sub_label", width: 100 },
-                { title: "수량", dataIndex: "quantity", key: "quantity", width: 60 },
-                { title: "단위", dataIndex: "unit", key: "unit", width: 60 },
-                { title: "비고", dataIndex: "note", key: "note", ellipsis: true },
+                {
+                  title: "품목",
+                  dataIndex: "label",
+                  key: "label",
+                  width: 120,
+                },
+                {
+                  title: "부위",
+                  dataIndex: "sub_label",
+                  key: "sub_label",
+                  width: 100,
+                },
+                {
+                  title: "상태",
+                  dataIndex: "status",
+                  key: "status",
+                  width: 90,
+                  render: (v) => renderStatusTag(v || "PENDING"), // 없으면 기본 접수
+                },
+                {
+                  title: "수량",
+                  dataIndex: "quantity",
+                  key: "quantity",
+                  width: 60,
+                },
+                {
+                  title: "단위",
+                  dataIndex: "unit",
+                  key: "unit",
+                  width: 60,
+                },
+                {
+                  title: "비고",
+                  dataIndex: "note",
+                  key: "note",
+                  ellipsis: true,
+                },
               ]}
               dataSource={orderDetails}
               size="small"
@@ -338,7 +544,6 @@ const ClientDashboard = ({ user }) => {
           </>
         )}
       </Modal>
-
     </div>
   );
 };

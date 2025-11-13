@@ -86,6 +86,8 @@ router.get("/:orderId/details", async (req, res) => {
     const orderId = req.params.orderId;
     const sql = `
       SELECT
+        D.detail_id,               
+        D.status,                  
         D.type,
         D.item_label AS label,
         D.sub_label,
@@ -119,7 +121,7 @@ router.put("/admin/:orderId/status", async (req, res) => {
       return res.status(400).json({ ok: false, message: "허용되지 않는 상태입니다." });
     }
 
-    const sql = `UPDATE JUNIL_ORDER_HEADER SET status = ? WHERE order_id = ?`;
+    const sql = `UPDATE JUNIL_ORDER_DETAIL SET status = ? WHERE order_id = ?`;
     const result = await SQL.executeQuery(sql, [status, orderId]);
     if (result.affectedRows === 0) {
       return res.status(404).json({ ok: false, message: "주문을 찾을 수 없습니다." });

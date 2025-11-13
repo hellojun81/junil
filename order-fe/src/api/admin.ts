@@ -23,6 +23,9 @@ export const getAdminOverview = async () => {
   return { overview: ov, trend: tr.list || [] };
 };
 
+
+
+
 // 그룹 통계 (품목/부위/UNIT)
 export const getOrdersByGroup = async ({ groupBy, dateFrom, dateTo, type, unit }: any) => {
   const q = new URLSearchParams();
@@ -141,6 +144,7 @@ export const getCustomerItemSummary = async (p: { customerId: number | string; d
 
 export const getAllCustomerItemSummary = async (p: { customerId: number | string; dateFrom?: string; dateTo?: string; status?: string }) => {
   const q = new URLSearchParams();
+  console.log('getAllCustomerItemSummary')
   if (p.customerId) q.set("customerId", String(p.customerId));
   if (p.dateFrom) q.set("dateFrom", p.dateFrom);
   if (p.dateTo) q.set("dateTo", p.dateTo);
@@ -175,3 +179,10 @@ export const updateSettings = async (payload: {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   }).then(toJSON);
+
+  export const updateOrderDetailStatus = async (detailId: number | string, status: string) =>
+  fetch(`${API_BASE_URL}/api/orders/${detailId}/status`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status }),
+  }).then(j);

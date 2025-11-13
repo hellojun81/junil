@@ -57,7 +57,7 @@ async function findCustomerPhone(conn, customerId) {
 router.get("/:orderId/details", async (req, res) => {
   try {
     const orderId = req.params.orderId;
-    const sql = `SELECT H.type, D.item_label AS label,IFNULL(D.sub_label,'') AS sub_label, D.unit, D.quantity,D.price,
+    const sql = `SELECT D.detail_id,D.status , H.type, D.item_label AS label,IFNULL(D.sub_label,'') AS sub_label, D.unit, D.quantity,D.price,
     D.amount, IFNULL(D.note,'')AS note FROM JUNIL_ORDER_DETAIL D  INNER JOIN JUNIL_ITEMS H ON D.item_id = H.item_id  WHERE D.order_id = ?  ORDER BY D.order_id, D.item_label
 `;
     const rows = await SQL.executeQuery(sql, [orderId]);
@@ -153,6 +153,34 @@ router.post("/", async (req, res) => {
     res.status(500).json({ ok: false, message: e.message });
   } finally {
     conn.release();
+  }
+});
+
+router.put("/:detailId/status", async (req, res) => {
+  try {
+    const detailId = req.params.detailId;
+    const { status } = req.body;
+    console.log('detailId',detailId)
+    const allowed = new Set(["PENDING", "DELIVERED", "CANCELLED"]);
+    if (!allowed.has(status)) {
+      return res.status(400).json({ ok: false, message: "허용되지 않는 상태값입니다." });
+    }
+
+    // 기존 detail_id 존재 여부 체크
+    const checkSql = `SELECT detail_id FROM JUNIL_ORDER_DETAIL WHERE detail_id=? LIMIT 1`;
+    const chk = await SQL.executeQuery(checkSql, [detailId]);
+    if (!chk.length) {
+      return res.status(404).json({ ok: false, message: "detail_id를 찾을 수 없습니다." });
+    }
+
+    // 상태 업데이트
+    const updSql = `UPDATE JUNIL_ORDER_DETAIL SET status=? WHERE detail_id=?`;
+    await SQL.executeQuery(updSql, [status, detailId]);
+
+    res.json({ ok: true, detail_id: detailId, status });
+  } catch (err) {
+    console.error("detail status update error:", err);
+    res.status(500).json({ ok: false, message: "상세 상태 변경 실패" });
   }
 });
 
